@@ -44,3 +44,86 @@ Test it: pytest tests/test_pipeline.py -k app
 #
 # What the page does NOT do: cleaning, grouping, pivoting. If you find yourself
 # writing a groupby or a pivot_table here, that logic belongs in the package.
+
+import streamlit as st
+
+from payroll import (
+    load_employees,
+    load_export,
+    build_history,
+    summarize_employees,
+    hours_grid,
+    missed_weeks,
+    pay_by_month,
+)
+
+st.title("Salt City Coffee — Quarterly Payroll Report")
+
+roster = load_employees()
+
+uploads = st.file_uploader(
+    "Upload payroll exports:",
+    type=["csv"],
+    accept_multiple_files=True,
+    key="exports",
+)
+
+if uploads:
+    exports = [load_export(u) for u in uploads]
+    history = build_history(exports, roster)
+
+    unmatched = history[history["department"].isna()]
+    if len(unmatched) > 0:
+        ids = ", ".join(sorted(unmatched["employeeid"].unique()))
+        st.warning(f"Unmatched employee IDs: {ids}")
+
+    matched = history[history["department"].notna()]
+
+    departments = sorted(matched["department"].unique())
+    department = st.selectbox("Department", ["All"] + departments, key="department")
+
+    first_date = matched["pay_date"].min().date()
+    last_date = matched["pay_date"].max().date()
+    dates = st.date_input(
+        "Pay dates",
+        value=(first_date, last_date),
+        min_value=first_date,
+        max_value=last_date,
+        key="dates",
+    )
+    start, end = dates if len(dates) == 2 else (dates[0], dates[0])
+
+    filtered = matched[
+        (matched["pay_date"].dt.date >= start) & (matched["pay_date"].dt.date <= end)
+    ]
+    if department != "All":
+        filtered = filtered[filtered["department"] == department]
+
+    weeks = filtered["week_ending"].nunique()
+    employees = filtered["employee_id"].nunique()
+    total_hours = filtered["hours_worked"].sum()
+    total_gross_pay = filtered["gross_pay"].sum()
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Weeks", weeks)
+    col2.metric("Employees", employees)
+    col3.metric("Total hours", f"{total_hours:,.2f}")
+    col4.metric("Total gross pay", f"${total_gross_pay:,.2f}")
+
+    monthly = pay_by_month(filtered)
+    st.bar_chart(monthly, x="month")
+
+    st.dataframe(summarize_employees(filtered))
+
+    grid = hours_grid(filtered)
+    st.dataframe(grid)
+
+    st.dataframe(missed_weeks(grid))
+
+    st.download_button(
+        "Download pay by month CSV",
+        data=monthly.to_csv(index=False),
+        file_name="pay_by_month.csv",
+        mime="text/csv",
+        key="download",
+    )

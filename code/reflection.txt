@@ -1,7 +1,3 @@
-Write your reflection here.
+I used .str methods like .strip(), .upper(), and .zfill(3) to fix messy employee IDs without using a loop, turning something like "e4" into "E004". For numbers, I used pd.to_numeric with errors="coerce" to turn bad text into NaN, then filled it with 0. Dates were harder because they came in two different formats, so I had to parse the column twice and fill in the gaps from one pass using the other. I also used pd.concat with ignore_index=True to stack all the weekly files together, and did my first group by to turn weekly rows into one row per employee, using named aggregation and reset_index() to clean it up.
 
-See reflection.md for what makes a good reflection — be specific, use the
-terminology from this assignment (grain, long vs. wide, vectorized .str methods,
-coerce, NaT, pd.to_datetime format, .dt, concat, ignore_index, group by, named
-aggregation, reset_index, pivot_table, fill_value, melt, lineage), and make it
-actionable.
+The last part was about changing the grain of the table instead of just adding columns to it. I used pivot_table to turn the long table into a wide grid with fill_value=0, then melted it back to long to find the weeks someone wasn't paid, since that absence doesn't show up until the pivot creates an empty spot for it. I messed up a few functions by forgetting to indent the return line, so they just returned None instead of giving an error. I also had a bug where the warning on the page showed the cleaned version of an ID instead of the original one from the file. Next time I want to pay more attention to which version of a column, the raw one or the cleaned one, actually makes sense to show someone.
