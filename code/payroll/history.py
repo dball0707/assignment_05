@@ -136,7 +136,7 @@ def combine_exports(exports: list) -> pd.DataFrame:
       you write returns a DataFrame where you expected a row.
     - No `.copy()` needed — `concat` always builds a new frame.
     """
-    
+
     return pd.concat(exports, ignore_index=True)
 
 
